@@ -1,0 +1,26 @@
+/* Styl pro tlačítka v modálním okně */
+#fb-modal a,
+#fb-modal button {
+    display: inline-block !important;
+    text-decoration: none !important;
+    color: #ffffff !important; /* Barva textu tlačítek */
+    background-color: #000000 !important; /* Barva pozadí (černá) */
+    border: 2px solid #000000 !important; /* Rámeček kolem tlačítka */
+    padding: 10px 20px !important; /* Vnitřní mezera (od textu k okraji) */
+    font-size: 14px !important; /* Velikost textu */
+    text-align: center !important; /* Zarovnání textu */
+    cursor: pointer !important; /* Změna kurzoru na ručičku */
+    margin-top: 10px !important; /* Odstup tlačítek */
+    border-radius: 0px !important; /* Hranaté rohy */
+    font-weight: bold !important; /* Zvýraznění textu */
+}
+
+#fb-modal a:hover,
+#fb-modal button:hover {
+    background-color: #ffffff !important; /* Pozadí při najetí myší (bílá) */
+    color: #000000 !important; /* Barva textu při najetí myší */
+}
+
+#fb-modal a {
+    margin-bottom: 10px !important; /* Odstup mezi tlačítky */
+}
