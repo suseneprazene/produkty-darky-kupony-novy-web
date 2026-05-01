@@ -623,7 +623,7 @@ add_action('woocommerce_before_add_to_cart_button', function() {
                         success: function(response){
                             // Modal HTML - přidáme tlačítko a vypneme možný hover tooltip na stejný produkt
                             let productLink = $this.data('product-permalink') || '';
-                            let buttonHtml = productLink ? ('<div style="margin-top:10px;text-align:center;"><a href="'+productLink+'" class="button cfb-modal-detail-link" target="_blank" rel="noopener">Otevřít detail produktu</a></div>') : '';
+                            let buttonHtml = productLink ? ('<div style="margin-top:10px;text-align:center;"><a href="'+productLink+'" class="button" target="_blank" rel="noopener" style="padding:9px 16px;margin-top:10px;background:#0073aa;color:#fff;border-radius:4px;text-decoration:none;">Otevřít detail produktu</a></div>') : '';
                             let closeBtn = '<button class="cfb-modal-close" aria-label="Zavřít" tabindex="0">&times;</button>';
                             $('#cfbModal').html(closeBtn + response + buttonHtml);
                         },
@@ -697,6 +697,35 @@ function cfb_ajax_product_preview() {
 }
 
 // -- Košík, objednávky a další WooCommerce integrace - originál funkce zůstávají beze změn --
+
+// ── Store API (Block Cart) – registrace cfb dat pro woocommerce/cart block ──
+add_action('woocommerce_blocks_loaded', function() {
+    if (!function_exists('woocommerce_store_api_register_endpoint_data')) return;
+    woocommerce_store_api_register_endpoint_data([
+        'endpoint'        => Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema::IDENTIFIER,
+        'namespace'       => 'cfb_flavor',
+        'data_callback'   => function($cart_item) {
+            if (!isset($cart_item['cfb_flavor_selection']) || !is_array($cart_item['cfb_flavor_selection'])) return ['selected_flavors' => []];
+            $items = [];
+            foreach ($cart_item['cfb_flavor_selection'] as $fid => $data) {
+                if (isset($data['qty']) && $data['qty'] > 0) {
+                    $items[] = ['id' => (string)$fid, 'name' => $data['name'], 'qty' => (int)$data['qty']];
+                }
+            }
+            return ['selected_flavors' => $items];
+        },
+        'schema_callback' => function() {
+            return ['selected_flavors' => ['description' => 'Vybrané varianty', 'type' => 'array', 'context' => ['view'], 'readonly' => true, 'items' => ['type' => 'object']]];
+        },
+        'schema_type' => ARRAY_A,
+    ]);
+});
+
+// Zachovat cfb_flavor_selection při načtení košíku ze session
+add_filter('woocommerce_get_cart_item_from_session', function($cart_item, $values, $key) {
+    if (isset($values['cfb_flavor_selection'])) $cart_item['cfb_flavor_selection'] = $values['cfb_flavor_selection'];
+    return $cart_item;
+}, 10, 3);
 
 add_filter('woocommerce_add_cart_item', function($cart_item, $cart_item_key) {
     if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
@@ -810,7 +839,6 @@ add_filter('woocommerce_cart_item_name', function($item_name, $cart_item, $cart_
     return $item_name;
 }, 20, 3);
 
-// Zobrazit vybrané produkty jako řádky pod názvem v košíku (správný hook)
 add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
     if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
         $flavors = $cart_item['cfb_flavor_selection'];
@@ -829,14 +857,6 @@ add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
     }
     return $cart_data;
 }, 25, 2);
-
-// Zachovat cfb_flavor_selection při načtení košíku ze session (nutné pro reload stránky)
-add_filter('woocommerce_get_cart_item_from_session', function($cart_item, $values, $key) {
-    if (isset($values['cfb_flavor_selection'])) {
-        $cart_item['cfb_flavor_selection'] = $values['cfb_flavor_selection'];
-    }
-    return $cart_item;
-}, 10, 3);
 
 add_action('woocommerce_checkout_create_order_line_item', function($item, $cart_item_key, $values, $order) {
     if (!cfb_check_woocommerce()) return;
