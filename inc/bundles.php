@@ -632,11 +632,7 @@ add_action('woocommerce_before_add_to_cart_button', function() {
                         }
                     });
                 });
-                // Zavřít modal na pozadí nebo kliknutí na close
-                $('#cfbModalBg').on('click', function(){
-                    $('#cfbModalBg').hide();
-                    $('#cfbModal').hide().html('');
-                });
+                // Zavřít modal POUZE kliknutím na křížek (ne kliknutím na pozadí)
                 $(document).on('click', '.cfb-modal-close', function(){
                     $('#cfbModalBg').hide();
                     $('#cfbModal').hide().html('');
