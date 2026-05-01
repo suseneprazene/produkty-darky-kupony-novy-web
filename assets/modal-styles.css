@@ -1,26 +1,62 @@
 /* Styl pro tlačítka v modálním okně */
-#fb-modal a,
-#fb-modal button {
+/* Cílíme na tlačítka a tlačítkové odkazy, ALE NE na .cfb-product-link (textový odkaz na produkt) */
+#fb-modal button,
+#fb-modal a:not(.cfb-label):not(.cfb-product-link) {
     display: inline-block !important;
     text-decoration: none !important;
-    color: #ffffff !important; /* Barva textu tlačítek */
-    background-color: #000000 !important; /* Barva pozadí (černá) */
-    border: 2px solid #000000 !important; /* Rámeček kolem tlačítka */
-    padding: 10px 20px !important; /* Vnitřní mezera (od textu k okraji) */
-    font-size: 14px !important; /* Velikost textu */
-    text-align: center !important; /* Zarovnání textu */
-    cursor: pointer !important; /* Změna kurzoru na ručičku */
-    margin-top: 10px !important; /* Odstup tlačítek */
-    border-radius: 0px !important; /* Hranaté rohy */
-    font-weight: bold !important; /* Zvýraznění textu */
+    color: #ffffff !important;
+    background-color: #000000 !important;
+    border: 2px solid #000000 !important;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    margin-top: 10px !important;
+    border-radius: 0px !important;
+    font-weight: bold !important;
 }
 
-#fb-modal a:hover,
-#fb-modal button:hover {
-    background-color: #ffffff !important; /* Pozadí při najetí myší (bílá) */
-    color: #000000 !important; /* Barva textu při najetí myší */
+#fb-modal button:hover,
+#fb-modal a:not(.cfb-label):not(.cfb-product-link):hover {
+    background-color: #ffffff !important;
+    color: #000000 !important;
 }
 
-#fb-modal a {
-    margin-bottom: 10px !important; /* Odstup mezi tlačítky */
+#fb-modal a:not(.cfb-label):not(.cfb-product-link) {
+    margin-bottom: 10px !important;
+}
+
+/* Textový odkaz na produkt (.cfb-product-link) v modálním okně –
+   stejné chování jako v bundle listu na stránce produktu */
+#fb-modal a.cfb-label.cfb-product-link,
+#fb-modal .cfb-product-link {
+    display: inline !important;
+    background: none !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #111 !important;
+    font-size: 0.95rem !important;
+    font-weight: normal !important;
+    text-decoration: underline !important;
+    text-decoration-style: dotted !important;
+    text-decoration-color: #aaa !important;
+    cursor: pointer !important;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease !important;
+    transform: none !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+}
+
+#fb-modal a.cfb-label.cfb-product-link:hover,
+#fb-modal a.cfb-label.cfb-product-link:focus,
+#fb-modal .cfb-product-link:hover,
+#fb-modal .cfb-product-link:focus {
+    color: #111 !important;
+    text-decoration: none !important;
+    font-size: 1.04em !important;
+    background: none !important;
+    background-color: transparent !important;
+    transform: none !important;
 }

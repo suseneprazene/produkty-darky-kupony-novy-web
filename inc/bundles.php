@@ -623,7 +623,7 @@ add_action('woocommerce_before_add_to_cart_button', function() {
                         success: function(response){
                             // Modal HTML - přidáme tlačítko a vypneme možný hover tooltip na stejný produkt
                             let productLink = $this.data('product-permalink') || '';
-                            let buttonHtml = productLink ? ('<div style="margin-top:10px;text-align:center;"><a href="'+productLink+'" class="button" target="_blank" rel="noopener" style="padding:9px 16px;margin-top:10px;background:#0073aa;color:#fff;border-radius:4px;text-decoration:none;">Otevřít detail produktu</a></div>') : '';
+                            let buttonHtml = productLink ? ('<div style="margin-top:10px;text-align:center;"><a href="'+productLink+'" class="button cfb-modal-detail-link" target="_blank" rel="noopener">Otevřít detail produktu</a></div>') : '';
                             let closeBtn = '<button class="cfb-modal-close" aria-label="Zavřít" tabindex="0">&times;</button>';
                             $('#cfbModal').html(closeBtn + response + buttonHtml);
                         },
@@ -810,7 +810,8 @@ add_filter('woocommerce_cart_item_name', function($item_name, $cart_item, $cart_
     return $item_name;
 }, 20, 3);
 
-add_filter('woocommerce_cart_item_data', function($cart_data, $cart_item) {
+// Zobrazit vybrané produkty jako řádky pod názvem v košíku (správný hook)
+add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
     if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
         $flavors = $cart_item['cfb_flavor_selection'];
         $summary = [];
@@ -828,6 +829,14 @@ add_filter('woocommerce_cart_item_data', function($cart_data, $cart_item) {
     }
     return $cart_data;
 }, 25, 2);
+
+// Zachovat cfb_flavor_selection při načtení košíku ze session (nutné pro reload stránky)
+add_filter('woocommerce_get_cart_item_from_session', function($cart_item, $values, $key) {
+    if (isset($values['cfb_flavor_selection'])) {
+        $cart_item['cfb_flavor_selection'] = $values['cfb_flavor_selection'];
+    }
+    return $cart_item;
+}, 10, 3);
 
 add_action('woocommerce_checkout_create_order_line_item', function($item, $cart_item_key, $values, $order) {
     if (!cfb_check_woocommerce()) return;
