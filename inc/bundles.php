@@ -881,11 +881,25 @@ add_action('woocommerce_checkout_create_order_line_item', function($item, $cart_
     }
 }, 10, 4);
 
+// Enqueue Block Cart JS pro zobrazení vybraných variant balíčku
+add_action('wp_enqueue_scripts', function() {
+    if (!is_cart() && !is_checkout()) return;
+    wp_enqueue_script(
+        'cfb-cart-blocks-bundles',
+        plugins_url('../assets/cart-blocks-bundles.js', __FILE__),
+        ['wp-data'],
+        '1.0.1',
+        true
+    );
+});
+
 // Odečítání skladu na dokončení a zpracování objednávky
 function cfb_sklad_odecet($order_id) {
     if (!cfb_check_woocommerce()) return;
     $order = wc_get_order($order_id);
     if (!$order) return;
+    // Použijeme add_post_meta s unique=true – databáze zamítne druhý zápis, ochrana před dvojitým odečtem
+    if (!add_post_meta((int) $order->get_id(), '_cfb_stock_deducted', '1', true)) return;
     foreach ($order->get_items() as $item) {
         $flavors = $item->get_meta('_cfb_flavors_raw', true);
         $item_qty = $item->get_quantity();
