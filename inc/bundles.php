@@ -705,9 +705,17 @@ add_action('woocommerce_blocks_loaded', function() {
         'endpoint'        => Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema::IDENTIFIER,
         'namespace'       => 'cfb_flavor',
         'data_callback'   => function($cart_item) {
-            if (!isset($cart_item['cfb_flavor_selection']) || !is_array($cart_item['cfb_flavor_selection'])) return ['selected_flavors' => []];
+            // Primary source: cfb_flavor_selection (set by bundles.php itself on single product page)
+            // Fallback: sp_cfb_selection (set by sp-product-archive plugin when adding via archive modal)
+            $source = null;
+            if (!empty($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
+                $source = $cart_item['cfb_flavor_selection'];
+            } elseif (!empty($cart_item['sp_cfb_selection']) && is_array($cart_item['sp_cfb_selection'])) {
+                $source = $cart_item['sp_cfb_selection'];
+            }
+            if (!$source) return ['selected_flavors' => []];
             $items = [];
-            foreach ($cart_item['cfb_flavor_selection'] as $fid => $data) {
+            foreach ($source as $fid => $data) {
                 if (isset($data['qty']) && $data['qty'] > 0) {
                     $items[] = ['id' => (string)$fid, 'name' => $data['name'], 'qty' => (int)$data['qty']];
                 }
@@ -840,6 +848,10 @@ add_filter('woocommerce_cart_item_name', function($item_name, $cart_item, $cart_
 }, 20, 3);
 
 add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
+    // If sp-product-archive plugin is active and handling display via sp_cfb_selection, skip to avoid duplicate rows in cart.
+    if ( ! empty( $cart_item['sp_cfb_selection'] ) ) {
+        return $cart_data;
+    }
     if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
         $flavors = $cart_item['cfb_flavor_selection'];
         $summary = [];
