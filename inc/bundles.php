@@ -767,58 +767,52 @@ add_filter('woocommerce_add_cart_item_data', function($cart_item_data, $product_
                 ];
             }
         }
-        if (json_last_error() === JSON_ERROR_NONE && is_array($flavor_selection) && is_array($bundle_items)) {
-            // 1. Per-flavor stock validation (unchanged – keep full checks)
-            foreach ($flavor_selection as $flavor_id => $data) {
-                if (isset($data['qty']) && $data['qty'] > 0) {
-                    $wc_product = wc_get_product($flavor_id);
-                    if ($wc_product) {
-                        $is_managed   = $wc_product->managing_stock();
-                        $is_in_stock  = $wc_product->is_in_stock();
-                        $stock        = $is_managed ? $wc_product->get_stock_quantity() : null;
-                        $is_chooseable = $is_managed ? ($is_in_stock && $stock > 0) : $is_in_stock;
-                        if (!$is_chooseable) {
-                            wc_add_notice('Produkt "' . esc_html($data['name']) . '" není skladem a nelze jej vybrat.', 'error');
-                            return false;
-                        }
-                        if ($is_managed && $data['qty'] > $stock) {
-                            wc_add_notice('Nelze vložit více "' . esc_html($data['name']) . '" než je skladem.', 'error');
-                            return false;
-                        }
-                    }
+if (json_last_error() === JSON_ERROR_NONE && is_array($flavor_selection) && is_array($bundle_items)) {
+
+    // 1. Kontrola skladu pro každou vybranou variantu
+    foreach ($flavor_selection as $flavor_id => $data) {
+        if (isset($data['qty']) && $data['qty'] > 0) {
+            $wc_product = wc_get_product($flavor_id);
+            if ($wc_product) {
+                $is_managed   = $wc_product->managing_stock();
+                $is_in_stock  = $wc_product->is_in_stock();
+                $stock        = $is_managed ? $wc_product->get_stock_quantity() : null;
+                $is_chooseable = $is_managed ? ($is_in_stock && $stock > 0) : $is_in_stock;
+                if (!$is_chooseable) {
+                    wc_add_notice('Produkt "' . esc_html($data['name']) . '" není skladem a nelze jej vybrat.', 'error');
+                    return false;
+                }
+                if ($is_managed && $data['qty'] > $stock) {
+                    wc_add_notice('Nelze vložit více "' . esc_html($data['name']) . '" než je skladem.', 'error');
+                    return false;
                 }
             }
-
-            // 2. Total quantity validation.
-            //    Per-section limits are enforced by JavaScript on the frontend.
-            //    PHP checks only the grand total, which avoids false failures when
-            //    multiple sections share the same product category (overlapping $item_ids
-            //    would cause the old per-section $cat_total to count the same flavors
-            //    multiple times, making it always larger than the section limit).
-            $total_required = 0;
-            foreach ($bundle_items as $item) {
-                $total_required += intval($item['limit']);
-            }
-            $total_selected = 0;
-            foreach ($flavor_selection as $data) {
-                if (isset($data['qty'])) {
-                    $total_selected += intval($data['qty']);
-                }
-            }
-            if ($total_selected !== $total_required) {
-                wc_add_notice(
-                    sprintf(
-                        'Musíte vybrat přesně %d %s celkem.',
-                        $total_required,
-                        cfb_get_balicek_form($total_required)
-                    ),
-                    'error'
-                );
-                return false;
-            }
-
-            $cart_item_data['cfb_flavor_selection'] = $flavor_selection;
         }
+    }
+
+    // 2. Kontrola celkového počtu
+    // (per-sekci kontrolu dělá JS; PHP kontroluje jen součet, aby nevznikaly
+    //  falešné chyby když více sekcí sdílí stejnou kategorii produktů)
+    $total_required = 0;
+    foreach ($bundle_items as $bundle_item) {
+        $total_required += intval($bundle_item['limit']);
+    }
+    $total_selected = 0;
+    foreach ($flavor_selection as $data) {
+        if (isset($data['qty'])) {
+            $total_selected += intval($data['qty']);
+        }
+    }
+    if ($total_selected !== $total_required) {
+        wc_add_notice(
+            'Musíte vybrat přesně ' . $total_required . ' ' . cfb_get_balicek_form($total_required) . ' celkem.',
+            'error'
+        );
+        return false;
+    }
+
+    $cart_item_data['cfb_flavor_selection'] = $flavor_selection;
+}
     }
     return $cart_item_data;
 }, 10, 2);
