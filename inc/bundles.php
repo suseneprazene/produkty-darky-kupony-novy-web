@@ -830,22 +830,12 @@ add_filter('woocommerce_add_cart_item_data', function($cart_item_data, $product_
     return $cart_item_data;
 }, 10, 2);
 
-add_filter('woocommerce_cart_item_name', function($item_name, $cart_item, $cart_item_key) {
-    if (!cfb_check_woocommerce()) return $item_name;
-    if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
-        $flavors = $cart_item['cfb_flavor_selection'];
-        if (!empty($flavors)) {
-            $item_name .= '<div class="cfb-cart-flavors"><strong>Vybrané položky:</strong><ul>';
-            foreach ($flavors as $flavor_id => $data) {
-                if (isset($data['qty']) && $data['qty'] > 0) {
-                    $item_name .= '<li>' . esc_html($data['name']) . ': ' . esc_html($data['qty']) . ' ' . cfb_get_balicek_form($data['qty']) . '</li>';
-                }
-            }
-            $item_name .= '</ul></div>';
-        }
+// Skryj WC variation meta "Výběr balíčku" (sanitizováno na .variation-Vbrbalku) v košíku – je zobrazeno jinde přes cfb_flavor_selection.
+add_action('wp_head', function() {
+    if (is_cart() || is_checkout() || is_account_page()) {
+        echo '<style>.variation-Vbrbalku { display: none !important; }</style>';
     }
-    return $item_name;
-}, 20, 3);
+});
 
 add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
     // If sp-product-archive plugin is active and handling display via sp_cfb_selection, skip to avoid duplicate rows in cart.
