@@ -753,8 +753,13 @@ add_filter('woocommerce_add_cart_item', function($cart_item, $cart_item_key) {
 add_filter('woocommerce_add_cart_item_data', function($cart_item_data, $product_id) {
     if (!cfb_check_woocommerce()) return $cart_item_data;
     if (isset($_POST['cfb_flavor_selection']) && !empty($_POST['cfb_flavor_selection'])) {
-        $flavor_selection = json_decode(stripslashes($_POST['cfb_flavor_selection']), true);
-        $bundle_items = get_post_meta($product_id, '_cfb_bundle_items', true);
+$raw = $_POST['cfb_flavor_selection'];
+// sp-product-archive již provedl wp_unslash – stripslashes by mohl poškodit data
+$flavor_selection = json_decode($raw, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    // zkus ještě jednou s wp_unslash pro jistotu
+    $flavor_selection = json_decode(wp_unslash($raw), true);
+}        $bundle_items = get_post_meta($product_id, '_cfb_bundle_items', true);
         if ((!is_array($bundle_items) || empty($bundle_items)) && ($categories = get_post_meta($product_id, '_cfb_categories', true))) {
             $bundle_items = [];
             foreach ($categories as $cat) {
