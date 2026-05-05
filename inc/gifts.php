@@ -276,14 +276,14 @@ add_action('woocommerce_after_cart_table', function(){
 
         // Layout + CSS
         echo '<style>
-        .wcgift-gift-list {display:flex;flex-direction:column;gap:14px;margin:1em 0 0 0;}
+        .wcgift-gift-list {display:flex;flex-direction:column;gap:0;margin:1em 0 0 0;}
         .wcgift-choice-row {display:flex;align-items:center;gap:1em;}
         .wcgift-choice-row input[type=radio] {margin:0 8px 0 0;}
         .wcgift-choice-row .product-thumbnail img {
             width:48px !important;height:48px !important;object-fit:contain;border-radius:4px;border:1px solid #eee;background:#fff;margin:0;padding:0;box-shadow:none;
         }
-        .wcgift-choice-row .product-name a {color:#222;text-decoration:none;font-weight:bold;font-size:1.05em;cursor:pointer;}
-        .wcgift-choice-row .product-name a:hover {text-decoration:underline;color:#0073aa;}
+        .wcgift-choice-row .product-name a {text-decoration:none;font-weight:normal;cursor:pointer;}
+        .wcgift-choice-row .product-name a:hover {text-decoration:underline;}
         .wcgift-choice-row .product-price {margin-left:auto;color:#008000;font-size:1em;font-weight:bold;}
         .cart-gift-row {padding:1.2em 1em 1em 1em;}
         </style>';
@@ -603,7 +603,7 @@ function pdk_gifts_render_cart_blocks_html(): string {
         if (!$eligible) {
             echo '<p style="color:#888;font-size:0.95em;margin:0.5em 0 0.8em;">🔒 '.esc_html($reason).'</p>';
         }
-        echo '<div class="wcgift-gift-list" style="display:flex;flex-direction:column;gap:14px;margin:1em 0 0 0;">';
+        echo '<div class="wcgift-gift-list" style="display:flex;flex-direction:column;gap:0;margin:1em 0 0 0;">';
         foreach ($gift_ids as $pid) {
             $prod = wc_get_product($pid);
             if (!$prod) continue;
@@ -613,7 +613,7 @@ function pdk_gifts_render_cart_blocks_html(): string {
             echo '<div class="wcgift-choice-row" style="display:flex;align-items:center;gap:1em;'.(!$eligible || !$in_stock ? 'opacity:0.5;' : '').'">';
             echo '<input type="radio" name="wcgift_choice_'.$ridx.'" value="'.esc_attr($pid).'" '.(!$can_add || !$in_stock ? 'disabled' : '').'>';
             echo '<span>'.$thumb.'</span>';
-            echo '<span><a href="'.esc_url($permalink).'" class="wcgift-modal-link" data-product_id="'.esc_attr($pid).'" style="color:#222;font-weight:bold;">'.esc_html($prod->get_name()).'</a></span>';
+            echo '<span><a href="'.esc_url($permalink).'" class="wcgift-modal-link" data-product_id="'.esc_attr($pid).'" style="font-weight:normal;">'.esc_html($prod->get_name()).'</a></span>';
             if ($in_stock) {
                 echo '<span style="margin-left:auto;color:#008000;font-weight:bold;">Zdarma</span>';
             } else {
