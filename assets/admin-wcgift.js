@@ -4,21 +4,24 @@
     window.wcgift_roles = window.wcgift_roles || [];
 
     function fetchNamesForSelect($select, action) {
-        var ids = $select.val() || [];
+        var raw = $select.val();
+        if (!raw) return;
+        var ids = Array.isArray(raw) ? raw : [raw];
+        ids = ids.filter(function(v){ return v && String(v).trim() !== ''; });
         if (!ids.length) return;
         $.ajax({
             url: ajaxurl,
-            data: {
-                action: action,
-                ids: ids.join(','),
-            },
+            data: { action: action, ids: ids.join(',') },
             success: function(data){
-                if (data && data.results) {
+                if (data && data.results && data.results.length) {
                     $select.empty();
                     data.results.forEach(function(obj){
-                        $select.append($('<option>', { value: obj.id, text: obj.text, selected: true }));
+                        var opt = new Option(obj.text, obj.id, true, true);
+                        $select.append(opt);
                     });
-                    $select.trigger('change.select2');
+                    if ($select.hasClass('select2-hidden-accessible')) {
+                        $select.trigger('change.select2');
+                    }
                 }
             }
         });
@@ -49,9 +52,17 @@
 
         html += '<div class="wcgift-rule-body" style="display:'+(rule.minimized?'none':'block')+';">';
 
-        // Dárkové produkty
-        html += '<div class="wcgift-row">';
+        // Dárkové produkty – přepínač produkty / kategorie
+        var giftsMode = rule.gifts_mode || 'products';
+        html += '<div class="wcgift-row wcgift-gifts-section">';
         html += '<label class="wcgift-label"><b>Dárkové produkty:</b></label>';
+        html += '<span class="wcgift-gifts-mode-toggle" style="display:inline-flex;border:1px solid #ccc;border-radius:4px;overflow:hidden;margin-bottom:8px;">';
+        html += '<button type="button" class="wcgift-gifts-mode-btn '+(giftsMode==='products'?'wcgift-mode-active':'')+'" data-mode="products" style="padding:4px 14px;border:none;background:'+(giftsMode==='products'?'#2271b1':'#f6f7f7')+';color:'+(giftsMode==='products'?'#fff':'#444')+';cursor:pointer;font-size:0.93em;">Konkrétní produkty</button>';
+        html += '<button type="button" class="wcgift-gifts-mode-btn '+(giftsMode==='category'?'wcgift-mode-active':'')+'" data-mode="category" style="padding:4px 14px;border:none;background:'+(giftsMode==='category'?'#2271b1':'#f6f7f7')+';color:'+(giftsMode==='category'?'#fff':'#444')+';cursor:pointer;font-size:0.93em;">Celá kategorie</button>';
+        html += '</span>';
+
+        // Výběr konkrétních produktů
+        html += '<div class="wcgift-gifts-products-wrap" style="display:'+(giftsMode==='products'?'block':'none')+';">';
         html += '<select class="wcgift-gifts wcgift-select" multiple data-placeholder="Vyhledej produkt nebo variantu">';
         if(rule.gifts && rule.gifts.length){
             rule.gifts.forEach(function(pid){
@@ -59,6 +70,18 @@
             });
         }
         html += '</select>';
+        html += '</div>';
+
+        // Výběr kategorie
+        html += '<div class="wcgift-gifts-category-wrap" style="display:'+(giftsMode==='category'?'block':'none')+';">';
+        html += '<select class="wcgift-gifts-category wcgift-select" data-placeholder="Vyhledej kategorii">';
+        if(rule.gifts_category){
+            html += '<option value="'+rule.gifts_category+'" selected>'+rule.gifts_category+'</option>';
+        }
+        html += '</select>';
+        html += '<p class="description" style="margin:4px 0 0;color:#666;font-size:0.9em;">Zákazník si vybere libovolný produkt z této kategorie jako dárek.</p>';
+        html += '</div>';
+
         html += '</div>';
 
         // Required products
@@ -214,6 +237,14 @@
             renderRules();
         });
 
+        // Přepínač režimu dárků (produkty / kategorie)
+        $('.wcgift-rule .wcgift-gifts-mode-btn').off('click').on('click', function(){
+            var idx = $(this).closest('.wcgift-rule').data('idx');
+            var mode = $(this).data('mode');
+            window.wcgift_rules[idx].gifts_mode = mode;
+            renderRules();
+        });
+
         // Výběry
         $('.wcgift-rule .wcgift-gifts').off().each(function(){
             var idx = $(this).closest('.wcgift-rule').data('idx');
@@ -234,6 +265,30 @@
                 window.wcgift_rules[idx].gifts = $(this).val() || [];
             });
             fetchNamesForSelect($sel, 'wcgift_search_products');
+        });
+        // Výběr kategorie pro dárky
+        $('.wcgift-rule .wcgift-gifts-category').off().each(function(){
+            var idx = $(this).closest('.wcgift-rule').data('idx');
+            var $sel = $(this);
+            $sel.select2({
+                ajax: {
+                    url: ajaxurl,
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params){ return { term: params.term, action: 'wcgift_search_categories' }; },
+                    processResults: function(data){ return data; },
+                },
+                minimumInputLength: 2,
+                width: '60%',
+                allowClear: true,
+                placeholder: "Vyhledej kategorii"
+            }).on('change', function(){
+                var val = $(this).val();
+                window.wcgift_rules[idx].gifts_category = val || null;
+            });
+            if (window.wcgift_rules[idx].gifts_category) {
+                fetchNamesForSelect($sel, 'wcgift_search_categories');
+            }
         });
         $('.wcgift-rule .wcgift-required-products').off().each(function(){
             var idx = $(this).closest('.wcgift-rule').data('idx');
@@ -336,15 +391,9 @@
             var idx = $(this).closest('.wcgift-rule').data('idx');
             window.wcgift_rules[idx].date_to = $(this).val();
         });
-        $('.wcgift-rule .wcgift-roles').off().each(function(){
+        $('.wcgift-rule .wcgift-roles').off('change').on('change', function(){
             var idx = $(this).closest('.wcgift-rule').data('idx');
-            $(this).select2({
-                width: '50%',
-                allowClear: true,
-                placeholder: "Vyber role"
-            }).on('change', function(){
-                window.wcgift_rules[idx].roles = $(this).val() || [];
-            });
+            window.wcgift_rules[idx].roles = $(this).val() || [];
         });
         $('.wcgift-rule .wcgift-first-purchase').off('change').on('change', function(){
             var idx = $(this).closest('.wcgift-rule').data('idx');
@@ -361,9 +410,10 @@
     }
 
     function applySelect2(){
-        $('.wcgift-rule select').each(function(){
-            if (!$(this).hasClass('select2-hidden-accessible') && $(this).attr('multiple')) {
-                $(this).select2({ width: '60%', allowClear: true });
+        // Pouze pro role select (bez ajaxu) – ajax selecty inicializuje bindRuleEvents
+        $('.wcgift-rule .wcgift-roles').each(function(){
+            if (!$(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2({ width: '50%', allowClear: true, placeholder: "Vyber role" });
             }
         });
     }
@@ -373,7 +423,9 @@
             name: '',
             active: true,
             minimized: true,
+            gifts_mode: 'products',
             gifts: [],
+            gifts_category: null,
             required_products: [],
             required_products_active: false,
             required_categories: [],
@@ -410,6 +462,8 @@
     $(document).ready(function(){
         for(var i=0;i<window.wcgift_rules.length;i++){
             if(typeof window.wcgift_rules[i].minimized === 'undefined') window.wcgift_rules[i].minimized = true;
+            if(typeof window.wcgift_rules[i].gifts_mode === 'undefined') window.wcgift_rules[i].gifts_mode = 'products';
+            if(typeof window.wcgift_rules[i].gifts_category === 'undefined') window.wcgift_rules[i].gifts_category = null;
             if(typeof window.wcgift_rules[i].required_products_active === 'undefined') window.wcgift_rules[i].required_products_active = false;
             if(typeof window.wcgift_rules[i].required_categories_active === 'undefined') window.wcgift_rules[i].required_categories_active = false;
             if(typeof window.wcgift_rules[i].excluded_products_active === 'undefined') window.wcgift_rules[i].excluded_products_active = false;
