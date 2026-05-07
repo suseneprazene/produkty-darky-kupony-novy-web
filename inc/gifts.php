@@ -274,6 +274,9 @@ add_action('woocommerce_after_cart_table', function(){
         $gift_count = isset($gift_counts[$ridx]) ? $gift_counts[$ridx] : 0;
         $can_add_gift = $gift_count < $max_gifts;
 
+        // Pokud zákazník již vybral všechny dárky, které může, seznam nezobrazujeme
+        if (!$can_add_gift) continue;
+
         // Layout + CSS
         echo '<style>
         .wcgift-gift-list {display:flex;flex-direction:column;gap:0;margin:1em 0 0 0;}
@@ -597,6 +600,9 @@ function pdk_gifts_render_cart_blocks_html(): string {
         $max_gifts  = isset($rule['max_gifts']) && (int)$rule['max_gifts'] > 0 ? (int)$rule['max_gifts'] : 1;
         $gift_count = $gift_counts[$ridx] ?? 0;
         $can_add    = $eligible && ($gift_count < $max_gifts);
+
+        // Pokud zákazník již vybral všechny dárky, které může, seznam nezobrazujeme
+        if ($eligible && $gift_count >= $max_gifts) continue;
 
         echo '<div class="cart-gift-row" style="background:#fff;color:#222;margin-bottom:2em;border-radius:7px;padding:1.2em 1em;">';
         echo '<strong style="font-size:1.04em;">'.esc_html($rule['note'] ?? 'Dárek zdarma:').'</strong>';
