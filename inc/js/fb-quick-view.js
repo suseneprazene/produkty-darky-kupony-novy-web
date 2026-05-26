@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevButton = document.getElementById('fb-modal-prev');
     const nextButton = document.getElementById('fb-modal-next');
 
+    // Pokud modal nebo tlačítka na stránce nejsou, skript se ukončí
+    if (!modal || !modalContent || !closeButton || !prevButton || !nextButton) {
+        return;
+    }
+
     let currentIndex = 0;
     let productList = [];
 
@@ -29,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    modalContent.innerHTML = data.data.html + 
+                    modalContent.innerHTML = data.data.html +
                         '<a href="' + product.url + '" style="display: block; margin-top: 10px; text-decoration: none; color: #fff; background-color: #000; padding: 10px 20px; border-radius: 0px; font-weight: bold;">Zobrazit celý produkt</a>';
                     modal.style.display = 'block';
 
