@@ -736,17 +736,9 @@ add_filter('woocommerce_get_cart_item_from_session', function($cart_item, $value
 }, 10, 3);
 
 add_filter('woocommerce_add_cart_item', function($cart_item, $cart_item_key) {
-    if (isset($cart_item['cfb_flavor_selection']) && is_array($cart_item['cfb_flavor_selection'])) {
-        $desc = '';
-        foreach ($cart_item['cfb_flavor_selection'] as $flavor_id => $data) {
-            if (isset($data['qty']) && $data['qty'] > 0) {
-                $desc .= $data['name'] . ': ' . $data['qty'] . ' ' . cfb_get_balicek_form($data['qty']) . "\n";
-            }
-        }
-        if (!empty($desc)) {
-            $cart_item['data']->set_description("Balíček obsahuje:\n" . $desc);
-        }
-    }
+    // Poznámka: set_description() záměrně NEVYUŽÍVÁME – popis balíčku by se zobrazil
+    // v .wc-block-components-product-metadata__description a byl by oříznut theme CSS.
+    // Výběr variant zobrazujeme čistě přes woocommerce_get_item_data a Store API.
     return $cart_item;
 }, 20, 2);
 
@@ -856,9 +848,10 @@ add_filter('woocommerce_get_item_data', function($cart_data, $cart_item) {
             }
         }
         if (!empty($summary)) {
+            $value = '<span class="cfb-bundle-lines">' . implode('<br>', array_map('esc_html', $summary)) . '</span>';
             $cart_data[] = [
                 'key'   => 'Obsah balíčku',
-                'value' => implode(', ', $summary),
+                'value' => $value,
             ];
         }
     }

@@ -4,20 +4,39 @@
 
     if (typeof pdk_blocks_gifts === 'undefined') return;
 
-    var WRAPPER_ID    = 'pdk-free-gifts';
-    var WRAPPER_CLASS = 'pdk-free-gifts-wrapper';
-    var DEBOUNCE_DELAY = 350; // ms
+    var WRAPPER_ID       = 'pdk-free-gifts';
+    var WRAPPER_CLASS    = 'pdk-free-gifts-wrapper';
     var RULE_NAME_PREFIX = 'wcgift_choice_';
-    var observer      = null;
-    var debounceTimer = null;
-    var isLoading     = false;
+    var isLoading        = false;
+    var unsubscribe      = null;
+    var lastCartSignature = null;
+
+    /* -------------------------------------------------- */
+    /* Cart signature – detekce skutečné změny košíku     */
+    /* -------------------------------------------------- */
+
+    function getCartSignature() {
+        try {
+            if (window.wp && window.wp.data) {
+                var cartData = window.wp.data.select('wc/store/cart').getCartData();
+                if (!cartData) return null;
+                // Signatura = počet položek + jejich key+qty + celková cena
+                var items = Array.isArray(cartData.items) ? cartData.items : [];
+                var sig = items.map(function (i) {
+                    return i.key + ':' + i.quantity;
+                }).join(',');
+                sig += '|' + (cartData.totals && cartData.totals.total_price ? cartData.totals.total_price : '');
+                return sig;
+            }
+        } catch (e) { /* ignore */ }
+        return null;
+    }
 
     /* -------------------------------------------------- */
     /* DOM helpers                                         */
     /* -------------------------------------------------- */
 
     function findInsertContainer() {
-        // Vložit UVNITŘ levého sloupce Cart Block, nikoliv za něj jako sourozenec
         return (
             document.querySelector('.wc-block-cart__main') ||
             document.querySelector('.wp-block-woocommerce-cart-items-block')
@@ -28,7 +47,9 @@
         var existing = document.getElementById(WRAPPER_ID);
         if (existing) {
             if (html) {
-                existing.innerHTML = html;
+                if (existing.innerHTML !== html) {
+                    existing.innerHTML = html;
+                }
             } else {
                 existing.parentNode.removeChild(existing);
             }
@@ -43,7 +64,6 @@
         wrapper.id        = WRAPPER_ID;
         wrapper.className = WRAPPER_CLASS;
         wrapper.innerHTML = html;
-
         container.appendChild(wrapper);
     }
 
@@ -55,15 +75,12 @@
         var wrapper = document.getElementById(WRAPPER_ID);
         if (!wrapper) return;
 
-        // Odstraň staré listenery klonováním uzlu
         var fresh = wrapper.cloneNode(true);
         wrapper.parentNode.replaceChild(fresh, wrapper);
 
-        // Aktivuj tlačítko po výběru rádia
         fresh.addEventListener('change', function (e) {
             if (e.target && e.target.type === 'radio') {
                 var name = e.target.name;
-                // Validace: name musí začínat prefixem a mít číselné ID
                 if (name.indexOf(RULE_NAME_PREFIX) !== 0) return;
                 var ruleId = name.slice(RULE_NAME_PREFIX.length);
                 if (!/^\d+$/.test(ruleId)) return;
@@ -72,11 +89,9 @@
             }
         });
 
-        // Klik na "Přidat dárek"
         fresh.addEventListener('click', function (e) {
             var btn = e.target.closest ? e.target.closest('.wcgift-add-gift-to-cart') : null;
             if (!btn) {
-                // Fallback for IE-like environments
                 var el = e.target;
                 while (el && el !== fresh) {
                     if (el.classList && el.classList.contains('wcgift-add-gift-to-cart')) { btn = el; break; }
@@ -103,7 +118,6 @@
                 try {
                     var resp = JSON.parse(xhr.responseText);
                     if (resp && resp.success) {
-                        // Spusti refresh WC Blocks store
                         if (window.wp && window.wp.data) {
                             try {
                                 window.wp.data.dispatch('wc/store/cart').invalidateResolutionForStore();
@@ -141,20 +155,9 @@
         if (isLoading) return;
         isLoading = true;
 
-        // Pozastavíme observer, aby injekce nevyvolala smyčku
-        if (observer) observer.disconnect();
-
         var xhr = new XMLHttpRequest();
         xhr.open('POST', pdk_blocks_gifts.ajaxurl, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-        function resume() {
-            isLoading = false;
-            var cartRoot = document.querySelector('.wp-block-woocommerce-cart');
-            if (observer && cartRoot) {
-                observer.observe(cartRoot, { childList: true, subtree: true });
-            }
-        }
 
         xhr.onload = function () {
             if (xhr.status === 200) {
@@ -168,11 +171,11 @@
                     console.error('pdk-cart-blocks-gifts: Failed to parse response', e);
                 }
             }
-            resume();
+            isLoading = false;
         };
         xhr.onerror = function () {
             console.error('pdk-cart-blocks-gifts: Network error');
-            resume();
+            isLoading = false;
         };
 
         xhr.send(
@@ -182,21 +185,22 @@
     }
 
     /* -------------------------------------------------- */
-    /* MutationObserver pro reaktivní refresh             */
+    /* Poslouchání změn košíku přes wp.data.subscribe     */
+    /* Refresh se spustí POUZE při změně obsahu košíku.   */
     /* -------------------------------------------------- */
 
-    function startObserver() {
-        if (observer) return;
+    function startStoreSubscription() {
+        if (!window.wp || !window.wp.data) return false;
 
-        var cartRoot = document.querySelector('.wp-block-woocommerce-cart');
-        if (!cartRoot) return;
-
-        observer = new MutationObserver(function () {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(loadAndInject, DEBOUNCE_DELAY);
+        unsubscribe = window.wp.data.subscribe(function () {
+            var sig = getCartSignature();
+            if (sig === null) return;          // store ještě není připraven
+            if (sig === lastCartSignature) return; // košík se nezměnil – nic neděláme
+            lastCartSignature = sig;
+            loadAndInject();
         });
 
-        observer.observe(cartRoot, { childList: true, subtree: true });
+        return true;
     }
 
     /* -------------------------------------------------- */
@@ -205,8 +209,20 @@
 
     function init() {
         if (!document.querySelector('.wp-block-woocommerce-cart')) return;
+
+        // Načti dárky hned při otevření stránky
+        lastCartSignature = getCartSignature();
         loadAndInject();
-        startObserver();
+
+        // Preferuj wp.data.subscribe (reaguje jen na skutečnou změnu košíku)
+        if (!startStoreSubscription()) {
+            // Fallback: wp.data není dostupné – zkus znovu za 1 s (store se načítá async)
+            setTimeout(function () {
+                if (!startStoreSubscription()) {
+                    console.warn('pdk-cart-blocks-gifts: wp.data není dostupné, dárky se nebudou automaticky aktualizovat.');
+                }
+            }, 1000);
+        }
     }
 
     if (document.readyState === 'loading') {
